@@ -1,0 +1,8 @@
+#!/bin/ash
+[ -z "$1" ] && exit 1
+while true; do
+printf "AT $1> "
+read cmd
+[ -z "$cmd" ] && continue
+echo $cmd | socat - $1,raw,echo=0,crnl | grep -v $cmd
+done

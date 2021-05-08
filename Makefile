@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gl-e750-mcu-lua
-PKG_VERSION:=0.1.0
+PKG_VERSION:=0.1.1
 PKG_RELEASE:=1
 
 PKG_LICENSE:=MPLv2
@@ -16,7 +16,7 @@ define Package/$(PKG_NAME)
 	SECTION:=Custom
 	CATEGORY:=Extra packages
 	TITLE:=Mudi MCU Communication Stub
-	DEPENDS:=+lua +luci-lib-nixio +luci-lib-jsonc +libubus-lua
+	DEPENDS:=+lua +luci-lib-nixio +luci-lib-jsonc +libubus-lua +socat
 endef
 
 define Package/$(PKG_NAME)/description
@@ -28,11 +28,11 @@ endef
 
 define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin
-	$(INSTALL_BIN) ./gl-e750-mcu.lua $(1)/usr/bin/gl-e750-mcu.lua
+	$(INSTALL_BIN) ./root/usr/bin/atrepl $(1)/usr/bin/atrepl
+	$(INSTALL_BIN) ./root/usr/bin/gl_e750_mcu.lua $(1)/usr/bin/gl_e750_mcu.lua
 	$(INSTALL_DIR) $(1)/etc/init.d
-	$(INSTALL_BIN) ./e750_mcu $(1)/etc/init.d/e750_mcu
-	$(INSTALL_BIN) ./mcu_shutdown $(1)/etc/init.d/mcu_shutdown
+	$(INSTALL_BIN) ./root/etc/init.d/gl_e750_mcu $(1)/etc/init.d/gl_e750_mcu
+	$(INSTALL_BIN) ./root/etc/init.d/mcu_shutdown $(1)/etc/init.d/mcu_shutdown
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
-

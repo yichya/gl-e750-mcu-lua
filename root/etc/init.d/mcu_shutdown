@@ -3,6 +3,6 @@
 STOP=8
 
 stop() {
-        echo '{"system":"reboot"}' > /dev/ttyS0
+        echo "{\"system\": \"reboot\"}" > /dev/ttyS0
         sleep 1
 }
