@@ -31,7 +31,17 @@ end
 
 local function wireless_clients()
     local wlan0info = conn:call("iwinfo", "assoclist", {device = "wlan0"})
+    if wlan0info == nil then
+        wlan0info = {
+            results = {}
+        }
+    end
     local wlan1info = conn:call("iwinfo", "assoclist", {device = "wlan1"})
+    if wlan1info == nil then
+        wlan1info = {
+            results = {}
+        }
+    end
     return table.getn(wlan0info.results) + table.getn(wlan1info.results)
 end
 
