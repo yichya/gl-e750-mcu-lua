@@ -7,6 +7,17 @@ local nixio = require "nixio"
 local conn = ubus.connect()
 if not conn then error("Failed to connect to ubus") end
 
+local function httpget(host, port, path, bufsize)
+    local a = nixio.connect(host, port, "inet", "stream")
+    if a == nil then
+        return nil
+    end
+    a:send("GET " .. path .. " HTTP/1.0\r\nHost: " .. host .. "\r\n\r\n")
+    local response = a:read(bufsize)
+    a:close()
+    return response
+end
+
 local function parse_radio_2g(radio)
     local up = "0"
     if radio.up then up = "1" end
@@ -74,7 +85,9 @@ local function human_readable_size(size)
 end
 
 local function data_usage(wwan_info)
-    if wwan_info == nil then return "Initializing" end
+    if wwan_info == nil then
+        return "Initializing"
+    end
     local tx = wwan_info.statistics.tx_bytes
     local rx = wwan_info.statistics.rx_bytes
     return human_readable_size(tx) .. "|" .. human_readable_size(rx)
@@ -85,7 +98,6 @@ local function network_info()
     return {
         -- fill some more useful information
         carrier = data_usage(info["wwan0"]),
-        vpn_server = data_usage(info["tun0"]),
 
         -- todo: check actual gateway device
         method_nw = "modem",
@@ -96,7 +108,6 @@ local function network_info()
         modem_mode = "4G+",
 
         -- todo: customizable or several preset information
-        system = "boot",
         work_mode = "Geo CN<>JP"
     }
 end
@@ -112,15 +123,27 @@ local function load_average()
 end
 
 local function vpn_info()
+    local xray_pprof_resp = httpget("localhost", 18888, "/debug/pprof/", 10000)
+    if xray_pprof_resp == nil then
+        return {
+            vpn_status = "connecting",
+            vpn_type = "Xray",
+            vpn_server = "Loading"
+        }
+    end
+    local numgos = string.match(xray_pprof_resp, "<tr><td>(%d+)</td><td><a href='goroutine")
     return {
-        -- todo: customizable or several preset information
         vpn_status = "connected",
-        vpn_type = "",
+        vpn_type = "NumGos:",
+        vpn_server = numgos
     }
 end
 
 local function build_request()
-    local t = {clock = os.date("%H:%M")}
+    local t = {
+        system = "boot",
+        clock = os.date("%H:%M")
+    }
     for k, v in pairs(vpn_info()) do t[k] = v end
     for k, v in pairs(network_info()) do t[k] = v end
     for k, v in pairs(wireless_info()) do t[k] = v end
