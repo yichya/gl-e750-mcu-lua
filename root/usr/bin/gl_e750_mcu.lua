@@ -81,8 +81,17 @@ local function network_info()
 
         -- todo: customizable or several preset information
         system = "boot",
-        lan_ip = "Outbound: JP",
-        work_mode = "Direct CN"
+        work_mode = "Geo CN<>JP"
+    }
+end
+
+local function load_average()
+    local info = conn:call("system", "info", {})
+    local load1min = info.load[1] / 65535
+    local load5min = info.load[2] / 65535
+    local load15min = info.load[3] / 65535
+    return {
+        lan_ip = string.format("%.2f, %.2f, %.2f", load1min, load5min, load15min)
     }
 end
 
@@ -100,6 +109,7 @@ local function build_request()
     for k, v in pairs(vpn_info()) do t[k] = v end
     for k, v in pairs(network_info()) do t[k] = v end
     for k, v in pairs(wireless_info()) do t[k] = v end
+    for k, v in pairs(load_average()) do t[k] = v end
     return t
 end
 
