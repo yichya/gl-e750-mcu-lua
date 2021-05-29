@@ -29,6 +29,12 @@ local function parse_radio_5g(radio)
     return {}
 end
 
+local function wireless_clients()
+    local wlan0info = conn:call("iwinfo", "assoclist", {device = "wlan0"})
+    local wlan1info = conn:call("iwinfo", "assoclist", {device = "wlan1"})
+    return table.getn(wlan0info.results) + table.getn(wlan1info.results)
+end
+
 local function wireless_info()
     local radio2g = {}
     local radio5g = {}
@@ -41,7 +47,9 @@ local function wireless_info()
             radio2g = parse_radio_2g(rt)
         end
     end
-    local t = {}
+    local t = {
+        clients = string.format("%d", wireless_clients())
+    }
     for k, v in pairs(radio2g) do t[k] = v end
     for k, v in pairs(radio5g) do t[k] = v end
     return t
@@ -56,7 +64,7 @@ local function human_readable_size(size)
 end
 
 local function data_usage(wwan_info)
-    if wwan_info == nil then return "Connecting" end
+    if wwan_info == nil then return "Initializing" end
     local tx = wwan_info.statistics.tx_bytes
     local rx = wwan_info.statistics.rx_bytes
     return human_readable_size(tx) .. "|" .. human_readable_size(rx)
@@ -67,6 +75,7 @@ local function network_info()
     return {
         -- fill some more useful information
         carrier = data_usage(info["wwan0"]),
+        vpn_server = data_usage(info["tun0"]),
 
         -- todo: check actual gateway device
         method_nw = "modem",
@@ -75,9 +84,6 @@ local function network_info()
         modem_up = "1",
         signal = "4",
         modem_mode = "4G+",
-
-        -- todo: calculate actual device count
-        clients = "1",
 
         -- todo: customizable or several preset information
         system = "boot",
@@ -100,7 +106,6 @@ local function vpn_info()
         -- todo: customizable or several preset information
         vpn_status = "connected",
         vpn_type = "",
-        vpn_server = "192.168.123.8"
     }
 end
 
