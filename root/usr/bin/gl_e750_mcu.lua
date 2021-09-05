@@ -3,19 +3,34 @@
 local ubus = require "ubus"
 local json = require "luci.jsonc"
 local nixio = require "nixio"
+local cURL = require "cURL"
 
 local conn = ubus.connect()
 if not conn then error("Failed to connect to ubus") end
 
-local function httpget(host, port, path, bufsize)
-    local a = nixio.connect(host, port, "inet", "stream")
-    if a == nil then
-        return nil
-    end
-    a:send("GET " .. path .. " HTTP/1.0\r\nHost: " .. host .. "\r\n\r\n")
-    local response = a:read(bufsize)
-    a:close()
-    return response
+local get_sys_stats_req = string.char(0, 0, 0, 0, 0)
+
+local function xray_goroutines()
+    local count = 0
+    local index = 7
+    local c = cURL.easy {
+        url = "http://127.0.0.1:8080/v2ray.core.app.stats.command.StatsService/GetSysStats",
+        post = true,
+        httpheader = {"Content-Type: application/grpc", "TE: trailers"},
+        postfields = get_sys_stats_req,
+        http_version = cURL.HTTP_VERSION_2_PRIOR_KNOWLEDGE,
+    }
+    c:perform({
+        writefunction = function(r)
+            -- https://developers.google.com/protocol-buffers/docs/encoding#varints
+            repeat
+                local curchar = string.byte(r:sub(index, index))
+                count = count + nixio.bit.lshift(nixio.bit.band(curchar, 127), 7 * (index - 7))
+                index = index + 1
+            until nixio.bit.band(curchar, 128) == 0
+        end
+    }):close()
+    return count
 end
 
 local function parse_radio_2g(radio)
@@ -123,20 +138,20 @@ local function load_average()
 end
 
 local function vpn_info()
-    local xray_pprof_resp = httpget("localhost", 18888, "/debug/pprof/", 10000)
-    if xray_pprof_resp == nil then
+    local ok, xray_pprof_resp = pcall(xray_goroutines)
+    if ok then
+        return {
+            vpn_status = "connected",
+            vpn_type = "NumGos:",
+            vpn_server = string.format("%d", xray_pprof_resp)
+        }
+    else
         return {
             vpn_status = "connecting",
             vpn_type = "Xray",
             vpn_server = "Loading"
         }
     end
-    local numgos = string.match(xray_pprof_resp, "<tr><td>(%d+)</td><td><a href='goroutine")
-    return {
-        vpn_status = "connected",
-        vpn_type = "NumGos:",
-        vpn_server = numgos
-    }
 end
 
 local function build_request()
