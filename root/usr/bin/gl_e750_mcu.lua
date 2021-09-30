@@ -4,11 +4,25 @@ local ubus = require "ubus"
 local json = require "luci.jsonc"
 local nixio = require "nixio"
 local cURL = require "cURL"
+local io = require "io"
 
 local conn = ubus.connect()
 if not conn then error("Failed to connect to ubus") end
 
 local get_sys_stats_req = string.char(0, 0, 0, 0, 0)
+local type_map = {
+    ["gsm"] = "2G",
+    ["cdma"] = "2G",
+    ["wcdma"] = "3G",
+    ["tdma"] = "3G",
+    ["lte"] = "4G"
+}
+
+local last_status = {
+    modem_up = "1",
+    signal = "0",
+    modem_mode = " "
+}
 
 local function xray_goroutines()
     local count = 0
@@ -31,6 +45,46 @@ local function xray_goroutines()
         end
     }):close()
     return count
+end
+
+local function get_signal_info()
+    local handle = io.popen("uqmi -t 100 -d /dev/cdc-wdm0 --get-signal-info")
+    local r = handle:read("*a")
+    handle:close()
+    local result = json.parse(r)
+
+    if type(result) == "table" then
+        local rssi = result["rssi"]
+        if rssi == nil then
+            rssi = result["signal"]
+        end
+        if rssi == nil then
+            rssi = -95
+        end
+
+        local signal = math.ceil((rssi + 95) / 10)
+        if signal < 0 then
+            signal = 0
+        end
+        if signal > 4 then
+            signal = 4
+        end
+
+        local modem_up = "1"
+        local modem_mode = type_map[result["type"]]
+        if modem_mode == nil then
+            modem_mode = " "
+            modem_up = 0
+        end
+
+        last_status = {
+            modem_up = modem_up,
+            signal = string.format("%d", signal),
+            modem_mode = modem_mode,
+        }
+    end
+
+    return last_status
 end
 
 local function parse_radio_2g(radio)
@@ -110,14 +164,15 @@ end
 
 local function network_info()
     local info = conn:call("network.device", "status", {})
-    return {
+    local carrier = data_usage(info["wwan0"])
+    local t = {
         -- fill some more useful information
-        carrier = data_usage(info["wwan0"]),
+        carrier = carrier,
 
         -- todo: check actual gateway device
         method_nw = "modem",
 
-        -- todo: communicate with uqmi for actual carrier info
+        -- placeholder when modem is not up
         modem_up = "0",
         signal = "0",
         modem_mode = " ",
@@ -125,6 +180,10 @@ local function network_info()
         -- todo: customizable or several preset information
         work_mode = "Geo CN<>JP"
     }
+    if carrier ~= "Initializing" then
+        for k, v in pairs(get_signal_info()) do t[k] = v end
+    end
+    return t
 end
 
 local function load_average()
