@@ -118,9 +118,9 @@ local function network_info()
         method_nw = "modem",
 
         -- todo: communicate with uqmi for actual carrier info
-        modem_up = "1",
-        signal = "4",
-        modem_mode = "4G+",
+        modem_up = "0",
+        signal = "0",
+        modem_mode = " ",
 
         -- todo: customizable or several preset information
         work_mode = "Geo CN<>JP"
