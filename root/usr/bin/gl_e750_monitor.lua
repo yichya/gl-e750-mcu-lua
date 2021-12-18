@@ -4,6 +4,7 @@ local nixio = require "nixio"
 local nixiofs = require "nixio.fs"
 
 local wdmdev = "/dev/cdc-wdm0"
+local xray_pid_file = "/var/run/xray.pid"
 
 local function signal_strength()
     local handle = io.popen("uqmi --timeout 100 -d " .. wdmdev .. " --get-signal-info")
@@ -13,12 +14,30 @@ local function signal_strength()
     if j == nil or j.type == nil then
         return "Cell: uqmi error"
     else
-        return string.format("Cell:%4ddBm %s", j.rssi, string.upper(j.type))
+        return string.format("Cell:%4ddBm %s", j.rssi, j.type:sub(0, 3):upper())
     end
 end
 
+local function xray_mem()
+    local pidv = ""
+    local vmdata = 0
+    local vmrss = 0
+    for line in io.lines(xray_pid_file) do
+        pidv = line
+    end
+    for line in io.lines(string.format("/proc/%s/status", pidv)) do
+        if line:sub(0, 5) == "VmRSS" then
+            vmrss = tonumber(line:match("%d+"))
+        end
+        if line:sub(0, 6) == "VmData" then
+            vmdata = tonumber(line:match("%d+"))
+        end
+    end
+    return string.format("VmRSS:  %6dKBVmData: %6dKB", vmrss, vmdata)
+end
+
 local function monitor_message()
-    return signal_strength()
+    return signal_strength() .. xray_mem()
 end
 
 local function send_message(msg)
@@ -33,9 +52,7 @@ local function send_message(msg)
 end
 
 local function sync()
-    local handle = io.popen("uqmi -d " .. wdmdev .. " --sync")
-    handle:read("*a")
-    handle:close()
+    os.execute("uqmi --timeout 100 -d " .. wdmdev .. " --sync")
 end
 
 while (true) do

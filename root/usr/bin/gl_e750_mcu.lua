@@ -13,13 +13,14 @@ local get_sys_stats_req = string.char(0, 0, 0, 0, 0)
 local function xray_goroutines()
     local count = 0
     local index = 7
-    local c = cURL.easy {
+    local c = cURL.easy({
         url = "http://127.0.0.1:8080/v2ray.core.app.stats.command.StatsService/GetSysStats",
         post = true,
         httpheader = {"Content-Type: application/grpc", "TE: trailers"},
         postfields = get_sys_stats_req,
         http_version = cURL.HTTP_VERSION_2_PRIOR_KNOWLEDGE,
-    }
+        timeout = 10,
+    })
     c:perform({
         writefunction = function(r)
             -- https://developers.google.com/protocol-buffers/docs/encoding#varints
