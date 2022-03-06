@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=gl-e750-mcu-lua
-PKG_VERSION:=0.3.1
+PKG_VERSION:=0.4.0
 PKG_RELEASE:=1
 
 PKG_LICENSE:=MPLv2
@@ -16,7 +16,7 @@ define Package/$(PKG_NAME)
 	SECTION:=Custom
 	CATEGORY:=Extra packages
 	TITLE:=Mudi MCU Communication Stub
-	DEPENDS:=+lua +luci-lib-nixio +luci-lib-jsonc +libubus-lua +socat +lua-curl-v3
+	DEPENDS:=+lua +luci-lib-nixio +luci-lib-jsonc +libubus-lua +socat +lua-curl-v3 +uqmi
 endef
 
 define Package/$(PKG_NAME)/description
